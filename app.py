@@ -16,7 +16,7 @@ if 'score' not in st.session_state:
 @st.cache_data
 def load_combined_data():
     # Laad de CSV
-    df = pd.read_csv('geanalyseerde_leerdoelen Q3 kennistoets.xlsx - geanalyseerde_leerdoelen.csv')
+    df = pd.read_csv('geanalyseerde_leerdoelen Q3 kennistoets.csv', sep=';')
     
     # MD Parser voor de links
     md_data = []
