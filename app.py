@@ -15,15 +15,15 @@ if 'score' not in st.session_state:
 # 3. Data Laden & Koppelen
 @st.cache_data
 def load_combined_data():
-    # Laad de CSV
-    df = pd.read_csv('geanalyseerde_leerdoelen Q3 kennistoets.csv', sep=';')
+    # Inladen met puntkomma als scheidingsteken
+    df = pd.read_csv('geanalyseerde_leerdoelen Q3 kennistoets.xlsx - geanalyseerde_leerdoelen.csv', sep=';')
     
-    # MD Parser voor de links
     md_data = []
+    # Regex voor de opmaak in JurKad.md
     pattern = r"(.+?)\s+Artikel:\s+([\d:.]+)\s+→\s+\[.*?\]\((.*?)\)"
     
     try:
-        with open('JurKad.md', 'r', encoding='utf-8') as f:
+        with open('Q1 tm Q3 JurKad.md', 'r', encoding='utf-8') as f:
             for line in f:
                 match = re.search(pattern, line)
                 if match:
@@ -34,19 +34,25 @@ def load_combined_data():
                         'url': url
                     })
     except FileNotFoundError:
-        st.error("Markdown bestand niet gevonden.")
+        st.error("Bestand 'Q1 tm Q3 JurKad.md' niet gevonden.")
         
     df_links = pd.DataFrame(md_data)
 
-    # Functie om de juiste URL te vinden bij een rij uit de CSV
     def get_url(row):
-        art_val = str(row['Artikel']).lower()
-        wet_val = str(row['Wet']).lower()
-        # Zoek match op artikelnummer
-        potential = df_links[df_links['art_key'].apply(lambda x: x in art_val or art_val in x)]
-        for _, l_row in potential.iterrows():
-            if l_row['wet_key'] in wet_val or wet_val in l_row['wet_key']:
-                return l_row['url']
+        # Haal alleen het cijfer/artikelnummer uit de tekst in de CSV (bijv. 'artikel 2' -> '2')
+        art_str = str(row['Artikel']).lower()
+        art_match = re.search(r"(\d+[:.]?\d*)", art_str)
+        
+        if art_match:
+            clean_art = art_match.group(1)
+            wet_val = str(row['Wet']).lower()
+            
+            # Zoek in de geparseerde links naar een match op artikelnummer
+            potential = df_links[df_links['art_key'] == clean_art]
+            for _, l_row in potential.iterrows():
+                # Check of de wetnaam uit de MD voorkomt in de wetnaam van de CSV
+                if l_row['wet_key'] in wet_val or wet_val in l_row['wet_key']:
+                    return l_row['url']
         return None
 
     df['artikel_url'] = df.apply(get_url, axis=1)
