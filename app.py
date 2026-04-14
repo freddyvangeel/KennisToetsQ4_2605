@@ -55,17 +55,15 @@ def load_combined_data():
 df = load_combined_data()
 alle_wetten = sorted(df['Wet'].dropna().unique().tolist())
 
-# Zoek eerst in Secrets, daarna in de Sidebar
+# Zoek de key in Secrets (zonder melding in de UI)
 api_key = st.secrets.get("OPENAI_API_KEY")
 
 with st.sidebar:
     st.header("⚙️ Instellingen")
-    # Alleen als de key niet in Secrets staat, tonen we het invoerveld
+    # Alleen als de key NIET in Secrets staat, tonen we het invoerveld
     if not api_key:
         api_key = st.text_input("OpenAI API Key", type="password")
-    else:
-        st.success("API Key geladen uit Secrets ✅")
-    
+        
     gekozen_wetten = st.multiselect("Filter op wet", options=["Allemaal"] + alle_wetten, default=["Allemaal"])
     aantal_doel = st.number_input("Totaal vragen", value=25)
     
@@ -107,7 +105,9 @@ if 'vraag_tekst' in st.session_state:
     row = st.session_state.current_row
     st.info(f"📚 **Bron:** [{row['Wet']} Art. {row['Artikel']}]({row['artikel_url'] if row['artikel_url'] else '#'})")
     st.subheader(st.session_state.vraag_tekst)
-    ans = st.text_area("Jouw antwoord:")
+    
+    # Door de key te koppelen aan vragen_teller, wordt het veld leeg bij elke nieuwe vraag
+    ans = st.text_area("Jouw antwoord:", key=f"input_vraag_{st.session_state.vragen_teller}")
 
     if st.button("Check") and not st.session_state.beoordeeld:
         check_prompt = f"Vraag: {st.session_state.vraag_tekst}\nAntwoord: {ans}\nContext: {row['Wet']} {row['Artikel']}. Begin met GOED of FOUT."
