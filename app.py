@@ -6,22 +6,19 @@ import re
 # 1. Configuratie
 st.set_page_config(page_title="Politie Toets Trainer Q3", layout="wide")
 
-# 2. Sessie variabelen
 if 'score' not in st.session_state:
-    st.session_state.score = 0
-    st.session_state.totaal = 0
-    st.session_state.vragen_teller = 0
+    st.session_state.score, st.session_state.totaal, st.session_state.vragen_teller = 0, 0, 0
 
-# 3. Data Laden & Koppelen
+# 2. Data Laden & Koppelen
 @st.cache_data
 def load_combined_data():
-    # Inladen en direct kolomnamen opschonen (spaties verwijderen)
+    # Inladen leerdoelen.csv
     df = pd.read_csv('leerdoelen.csv', sep=';')
     df.columns = df.columns.str.strip()
     
     md_data = []
+    # Regex voor JurKad.md patronen
     pattern = r"(.+?)\s+Artikel:\s+([\d:.]+)\s+→\s+\[.*?\]\((.*?)\)"
-    
     try:
         with open('JurKad.md', 'r', encoding='utf-8') as f:
             for line in f:
@@ -29,137 +26,110 @@ def load_combined_data():
                 if match:
                     wet_md, art_md, url = match.groups()
                     md_data.append({
-                        'wet_key': wet_md.strip().lower(),
-                        'art_key': art_md.strip().lower(),
+                        'wet_k': wet_md.strip().lower(), 
+                        'art_k': art_md.strip().lower(), 
                         'url': url
                     })
     except FileNotFoundError:
-        st.error("Bestand 'Q1 tm Q3 JurKad.md' niet gevonden.")
-        
+        st.error("Bestand 'JurKad.md' niet gevonden.")
+    
     df_links = pd.DataFrame(md_data)
 
     def get_url(row):
-        # Controleer of kolommen bestaan om fouten te voorkomen
-        if 'Artikel' not in row or 'Wet' not in row:
-            return None
-            
-        art_str = str(row['Artikel']).lower()
-        art_match = re.search(r"(\d+[:.]?\d*)", art_str)
+        # Pak artikelnummer uit kolom 'Artikel' (bijv. "artikel 3" -> "3")
+        art_raw = str(row['Artikel']).lower()
+        art_match = re.search(r"(\d+[:.]?\d*)", art_raw)
+        if not art_match: return f"https://wetten.overheid.nl/zoeken?Zoektekst={row['Wet']}"
         
-        if art_match:
-            clean_art = art_match.group(1)
-            wet_val = str(row['Wet']).lower()
-            
-            # Match op artikelnummer
-            potential = df_links[df_links['art_key'] == clean_art]
-            for _, l_row in potential.iterrows():
-                # Fuzzy match op wetnaam
-                if l_row['wet_key'] in wet_val or wet_val in l_row['wet_key']:
-                    return l_row['url']
-        return None
+        clean_art = art_match.group(1)
+        wet_val = str(row['Wet']).lower()
+        
+        # Match op artikelnummer en wetnaam
+        match = df_links[df_links['art_k'] == clean_art]
+        for _, l_row in match.iterrows():
+            if l_row['wet_k'] in wet_val or wet_val in l_row['wet_k']:
+                return l_row['url']
+        return f"https://wetten.overheid.nl/zoeken?Zoektekst={row['Wet']}"
 
     df['artikel_url'] = df.apply(get_url, axis=1)
     return df
 
-# Data inladen
-try:
-    df = load_combined_data()
-    alle_wetten = sorted(df['Wet'].dropna().unique().tolist())
-except Exception as e:
-    st.error(f"Fout bij laden CSV: {e}")
-    st.stop()
+df = load_combined_data()
+alle_wetten = sorted(df['Wet'].dropna().unique().tolist())
 
-# 4. API & Sidebar
+# 3. API & Sidebar
 api_key = st.secrets.get("OPENAI_API_KEY")
-
 with st.sidebar:
-    st.header("⚙️ Instellingen")
-    if not api_key:
-        api_key = st.text_input("OpenAI API Key", type="password")
-    
+    if not api_key: api_key = st.text_input("OpenAI API Key", type="password")
     gekozen_wetten = st.multiselect("Filter op wet", options=["Allemaal"] + alle_wetten, default=["Allemaal"])
     aantal_doel = st.number_input("Totaal vragen", value=25)
-    
     if st.button("Reset Score"):
         st.session_state.score, st.session_state.totaal, st.session_state.vragen_teller = 0, 0, 0
         st.rerun()
 
-if not api_key:
-    st.warning("Voer je API Key in.")
-    st.stop()
-
+if not api_key: st.stop()
 openai.api_key = api_key
 
-# 5. Filtering & Scoreboard
-filtered_df = df if "Allemaal" in gekozen_wetten or not gekozen_wetten else df[df['Wet'].isin(gekozen_wetten)]
-
-st.title("🚓 Politie Toets Trainer")
-
-c1, c2, c3 = st.columns(3)
-c1.metric("Vraag", f"{st.session_state.vragen_teller} / {aantal_doel}")
-c2.metric("Goed", st.session_state.score)
-perc = (st.session_state.score / st.session_state.totaal * 100) if st.session_state.totaal > 0 else 0
-c3.metric("Percentage", f"{round(perc, 1)}%")
-
-# 6. Helper functie voor vraaggeneratie
-def genereer_nieuwe_vraag():
+# 4. Helper functies
+def genereer_vraag():
+    filtered_df = df if "Allemaal" in gekozen_wetten or not gekozen_wetten else df[df['Wet'].isin(gekozen_wetten)]
     vraag_data = filtered_df.sample(n=1).iloc[0]
     st.session_state.current_row = vraag_data
     
-    prompt = f"Examen Politieacademie. Wet: {vraag_data['Wet']}, Artikel: {vraag_data['Artikel']}. Leerdoel: {vraag_data['Leerdoel']}. Genereer een vraag."
+    prompt = f"""Genereer EEN specifieke examenvraag voor de Politieacademie.
+    Wet: {vraag_data['Wet']}
+    Artikel: {vraag_data['Artikel']}
+    Leerdoel: {vraag_data['Leerdoel']}
     
-    res = openai.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}]
-    )
+    STRICTE REGELS:
+    1. Stel exact ÉÉN vraag. Geen deelvragen, geen 'en waarom?'.
+    2. Stel de vraag direct, zonder inleiding of 'Stel je voor'.
+    3. Focus op de juridische toepassing van dit specifieke artikel."""
+    
+    res = openai.chat.completions.create(model="gpt-4o-mini", messages=[{"role": "user", "content": prompt}])
     st.session_state.vraag_tekst = res.choices[0].message.content
     st.session_state.beoordeeld = False
     st.session_state.feedback = None
 
-# 7. UI Logica
+# 5. UI
+st.title("🚓 Politie Toets Trainer")
+c1, c2, c3 = st.columns(3)
+c1.metric("Vraag", f"{st.session_state.vragen_teller} / {aantal_doel}")
+c2.metric("Goed", st.session_state.score)
+perc = (st.session_state.score / st.session_state.totaal * 100) if st.session_state.totaal > 0 else 0
+c3.metric("Score", f"{round(perc, 1)}%")
+
 if 'vraag_tekst' not in st.session_state:
-    if st.button("Start Toets / Genereer vraag"):
-        genereer_nieuwe_vraag()
+    if st.button("Start / Volgende"):
+        genereer_vraag()
         st.rerun()
 else:
     row = st.session_state.current_row
-    bron_url = row['artikel_url'] if row['artikel_url'] else f"https://wetten.overheid.nl/zoeken?Zoektekst={row['Wet']}"
-    
-    st.info(f"📚 **Bron:** [{row['Wet']} - {row['Artikel']}]({bron_url})")
+    st.info(f"📚 **Bron:** [{row['Wet']} - {row['Artikel']}]({row['artikel_url']})")
     st.subheader(st.session_state.vraag_tekst)
-    
-    # Gebruik vragen_teller in de key om het veld leeg te maken bij een nieuwe vraag
-    ans = st.text_area("Jouw antwoord:", key=f"ans_{st.session_state.vragen_teller}")
+    ans = st.text_area("Antwoord:", key=f"ans_{st.session_state.vragen_teller}")
 
-    # Toon 'Check' knop zolang er geen beoordeling is
     if not st.session_state.beoordeeld:
-        if st.button("Check antwoord"):
-            check_prompt = f"Vraag: {st.session_state.vraag_tekst}\nAntwoord student: {ans}\nReferentie: {row['Wet']} {row['Artikel']}. Beoordeel streng. Begin met GOED of FOUT."
+        if st.button("Check"):
+            check_p = f"""Vraag: {st.session_state.vraag_tekst}
+            Antwoord student: {ans}
+            Juridisch kader: {row['Wet']} {row['Artikel']}
             
-            eval_res = openai.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[{"role": "user", "content": check_prompt}]
-            )
-            st.session_state.feedback = eval_res.choices[0].message.content
+            BEOORDELINGSRICHTLIJN:
+            - Start ALTIJD met 'GOED' of 'FOUT'.
+            - Wees redelijk: als de juridische kern klopt, is het GOED.
+            - Geef een korte, zakelijke toelichting."""
+            
+            res = openai.chat.completions.create(model="gpt-4o-mini", messages=[{"role": "user", "content": check_p}])
+            st.session_state.feedback = res.choices[0].message.content
             st.session_state.beoordeeld = True
-            
-            # Update score direct
             st.session_state.totaal += 1
-            if "GOED" in st.session_state.feedback.upper():
-                st.session_state.score += 1
+            if "GOED" in st.session_state.feedback.upper(): st.session_state.score += 1
             st.rerun()
 
-    # Toon resultaat en 'Volgende' knop na de check
     if st.session_state.beoordeeld:
-        st.markdown("---")
         st.write(st.session_state.feedback)
-        
         if st.button("Volgende vraag"):
             st.session_state.vragen_teller += 1
-            if st.session_state.vragen_teller < aantal_doel:
-                genereer_nieuwe_vraag() # Genereert direct de volgende set gegevens
-            else:
-                st.balloons()
-                st.success("Toets voltooid!")
-                del st.session_state.vraag_tekst
+            del st.session_state.vraag_tekst
             st.rerun()
