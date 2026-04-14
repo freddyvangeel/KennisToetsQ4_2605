@@ -84,7 +84,7 @@ def genereer_vraag():
     STRICTE REGELS:
     1. Stel exact ÉÉN vraag. Geen deelvragen, geen 'en waarom?'.
     2. Stel de vraag direct, zonder inleiding of 'Stel je voor'.
-    3. Focus op de juridische toepassing van dit specifieke artikel."""
+    3. Focus op de juridische toepassing of uitleg van dit specifieke artikel."""
     
     res = openai.chat.completions.create(model="gpt-4o-mini", messages=[{"role": "user", "content": prompt}])
     st.session_state.vraag_tekst = res.choices[0].message.content
