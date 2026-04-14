@@ -15,11 +15,11 @@ if 'score' not in st.session_state:
 # 3. Data Laden & Koppelen
 @st.cache_data
 def load_combined_data():
-    # Inladen met puntkomma als scheidingsteken
+    # Inladen en direct kolomnamen opschonen (spaties verwijderen)
     df = pd.read_csv('geanalyseerde_leerdoelen Q3 kennistoets.xlsx - geanalyseerde_leerdoelen.csv', sep=';')
+    df.columns = df.columns.str.strip()
     
     md_data = []
-    # Regex voor de opmaak in JurKad.md
     pattern = r"(.+?)\s+Artikel:\s+([\d:.]+)\s+→\s+\[.*?\]\((.*?)\)"
     
     try:
@@ -39,7 +39,10 @@ def load_combined_data():
     df_links = pd.DataFrame(md_data)
 
     def get_url(row):
-        # Haal alleen het cijfer/artikelnummer uit de tekst in de CSV (bijv. 'artikel 2' -> '2')
+        # Controleer of kolommen bestaan om fouten te voorkomen
+        if 'Artikel' not in row or 'Wet' not in row:
+            return None
+            
         art_str = str(row['Artikel']).lower()
         art_match = re.search(r"(\d+[:.]?\d*)", art_str)
         
@@ -47,10 +50,10 @@ def load_combined_data():
             clean_art = art_match.group(1)
             wet_val = str(row['Wet']).lower()
             
-            # Zoek in de geparseerde links naar een match op artikelnummer
+            # Match op artikelnummer
             potential = df_links[df_links['art_key'] == clean_art]
             for _, l_row in potential.iterrows():
-                # Check of de wetnaam uit de MD voorkomt in de wetnaam van de CSV
+                # Fuzzy match op wetnaam
                 if l_row['wet_key'] in wet_val or wet_val in l_row['wet_key']:
                     return l_row['url']
         return None
@@ -58,18 +61,22 @@ def load_combined_data():
     df['artikel_url'] = df.apply(get_url, axis=1)
     return df
 
-df = load_combined_data()
-alle_wetten = sorted(df['Wet'].dropna().unique().tolist())
+# Data inladen
+try:
+    df = load_combined_data()
+    alle_wetten = sorted(df['Wet'].dropna().unique().tolist())
+except Exception as e:
+    st.error(f"Fout bij laden CSV: {e}")
+    st.stop()
 
-# Zoek de key in Secrets (zonder melding in de UI)
+# 4. API & Sidebar
 api_key = st.secrets.get("OPENAI_API_KEY")
 
 with st.sidebar:
     st.header("⚙️ Instellingen")
-    # Alleen als de key NIET in Secrets staat, tonen we het invoerveld
     if not api_key:
         api_key = st.text_input("OpenAI API Key", type="password")
-        
+    
     gekozen_wetten = st.multiselect("Filter op wet", options=["Allemaal"] + alle_wetten, default=["Allemaal"])
     aantal_doel = st.number_input("Totaal vragen", value=25)
     
@@ -78,20 +85,21 @@ with st.sidebar:
         st.rerun()
 
 if not api_key:
-    st.warning("Voer je API Key in de zijbalk in of configureer de Secrets.")
+    st.warning("Voer je API Key in.")
     st.stop()
 
 openai.api_key = api_key
 
 # 5. Filtering & Scoreboard
-filtered_df = df if "Allemaal" in gekozen_wetten else df[df['Wet'].isin(gekozen_wetten)]
+filtered_df = df if "Allemaal" in gekozen_wetten or not gekozen_wetten else df[df['Wet'].isin(gekozen_wetten)]
+
 st.title("🚓 Politie Toets Trainer")
 
 c1, c2, c3 = st.columns(3)
 c1.metric("Vraag", f"{st.session_state.vragen_teller} / {aantal_doel}")
 c2.metric("Goed", st.session_state.score)
-percentage = (st.session_state.score / st.session_state.totaal * 100) if st.session_state.totaal > 0 else 0
-c3.metric("Percentage", f"{round(percentage, 1)}%")
+perc = (st.session_state.score / st.session_state.totaal * 100) if st.session_state.totaal > 0 else 0
+c3.metric("Percentage", f"{round(perc, 1)}%")
 
 # 6. Vraag Generatie
 if st.session_state.vragen_teller < aantal_doel:
@@ -99,7 +107,8 @@ if st.session_state.vragen_teller < aantal_doel:
         vraag_data = filtered_df.sample(n=1).iloc[0]
         st.session_state.current_row = vraag_data
         
-        prompt = f"Examen: {vraag_data['Wet']} Art. {vraag_data['Artikel']}. Doel: {vraag_data['Leerdoel']}. Geef vraag."
+        prompt = f"Examen Politieacademie. Wet: {vraag_data['Wet']}, Artikel: {vraag_data['Artikel']}. Leerdoel: {vraag_data['Leerdoel']}. Genereer een vraag."
+        
         res = openai.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}]
@@ -107,16 +116,21 @@ if st.session_state.vragen_teller < aantal_doel:
         st.session_state.vraag_tekst = res.choices[0].message.content
         st.session_state.beoordeeld = False
 
+# 7. Tonen & Beoordelen
 if 'vraag_tekst' in st.session_state:
     row = st.session_state.current_row
-    st.info(f"📚 **Bron:** [{row['Wet']} Art. {row['Artikel']}]({row['artikel_url'] if row['artikel_url'] else '#'})")
+    
+    # Gebruik de gevonden link uit de MD, anders fallback naar wetten.nl zoekopdracht
+    bron_url = row['artikel_url'] if row['artikel_url'] else f"https://wetten.overheid.nl/zoeken?Zoektekst={row['Wet']}"
+    
+    st.info(f"📚 **Bron:** [{row['Wet']} - {row['Artikel']}]({bron_url})")
     st.subheader(st.session_state.vraag_tekst)
     
-    # Door de key te koppelen aan vragen_teller, wordt het veld leeg bij elke nieuwe vraag
-    ans = st.text_area("Jouw antwoord:", key=f"input_vraag_{st.session_state.vragen_teller}")
+    ans = st.text_area("Jouw antwoord:", key=f"ans_{st.session_state.vragen_teller}")
 
     if st.button("Check") and not st.session_state.beoordeeld:
-        check_prompt = f"Vraag: {st.session_state.vraag_tekst}\nAntwoord: {ans}\nContext: {row['Wet']} {row['Artikel']}. Begin met GOED of FOUT."
+        check_prompt = f"Vraag: {st.session_state.vraag_tekst}\nAntwoord student: {ans}\nReferentie: {row['Wet']} {row['Artikel']}. Beoordeel streng. Begin met GOED of FOUT."
+        
         eval_res = openai.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": check_prompt}]
@@ -129,3 +143,4 @@ if 'vraag_tekst' in st.session_state:
         if "GOED" in feedback.upper():
             st.session_state.score += 1
         st.session_state.beoordeeld = True
+        st.button("Bevestig & Volgende")
