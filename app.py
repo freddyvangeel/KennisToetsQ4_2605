@@ -16,14 +16,14 @@ if 'score' not in st.session_state:
 @st.cache_data
 def load_combined_data():
     # Inladen en direct kolomnamen opschonen (spaties verwijderen)
-    df = pd.read_csv('geanalyseerde_leerdoelen Q3 kennistoets.xlsx - geanalyseerde_leerdoelen.csv', sep=';')
+    df = pd.read_csv('geanalyseerde_leerdoelen Q3 kennistoets.csv.csv', sep=';')
     df.columns = df.columns.str.strip()
     
     md_data = []
     pattern = r"(.+?)\s+Artikel:\s+([\d:.]+)\s+→\s+\[.*?\]\((.*?)\)"
     
     try:
-        with open('Q1 tm Q3 JurKad.md', 'r', encoding='utf-8') as f:
+        with open('JurKad.md', 'r', encoding='utf-8') as f:
             for line in f:
                 match = re.search(pattern, line)
                 if match:
