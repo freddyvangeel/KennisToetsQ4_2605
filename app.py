@@ -55,18 +55,26 @@ def load_combined_data():
 df = load_combined_data()
 alle_wetten = sorted(df['Wet'].dropna().unique().tolist())
 
-# 4. Sidebar
+# Zoek eerst in Secrets, daarna in de Sidebar
+api_key = st.secrets.get("OPENAI_API_KEY")
+
 with st.sidebar:
     st.header("⚙️ Instellingen")
-    api_key = st.text_input("OpenAI API Key", type="password")
+    # Alleen als de key niet in Secrets staat, tonen we het invoerveld
+    if not api_key:
+        api_key = st.text_input("OpenAI API Key", type="password")
+    else:
+        st.success("API Key geladen uit Secrets ✅")
+    
     gekozen_wetten = st.multiselect("Filter op wet", options=["Allemaal"] + alle_wetten, default=["Allemaal"])
     aantal_doel = st.number_input("Totaal vragen", value=25)
+    
     if st.button("Reset Score"):
         st.session_state.score, st.session_state.totaal, st.session_state.vragen_teller = 0, 0, 0
         st.rerun()
 
 if not api_key:
-    st.warning("Voer je API Key in.")
+    st.warning("Voer je API Key in de zijbalk in of configureer de Secrets.")
     st.stop()
 
 openai.api_key = api_key
