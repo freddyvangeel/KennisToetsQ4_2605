@@ -23,7 +23,7 @@ def load_combined_data():
     pattern = r"(.+?)\s+Artikel:\s+([\d:.]+)\s+→\s+\[.*?\]\((.*?)\)"
     
     try:
-        with open('Q1 tm Q3 JurKad.md', 'r', encoding='utf-8') as f:
+        with open('JurKad.md', 'r', encoding='utf-8') as f:
             for line in f:
                 match = re.search(pattern, line)
                 if match:
