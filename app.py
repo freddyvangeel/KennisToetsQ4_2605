@@ -101,9 +101,9 @@ c2.metric("Goed", st.session_state.score)
 perc = (st.session_state.score / st.session_state.totaal * 100) if st.session_state.totaal > 0 else 0
 c3.metric("Percentage", f"{round(perc, 1)}%")
 
-# 6. Vraag Generatie
-if st.session_state.vragen_teller < aantal_doel:
-    if st.button("Nieuwe vraag"):
+# 6. Vraag Generatie Logica
+if 'vraag_tekst' not in st.session_state:
+    if st.button("Genereer vraag"):
         vraag_data = filtered_df.sample(n=1).iloc[0]
         st.session_state.current_row = vraag_data
         
@@ -115,12 +115,12 @@ if st.session_state.vragen_teller < aantal_doel:
         )
         st.session_state.vraag_tekst = res.choices[0].message.content
         st.session_state.beoordeeld = False
+        st.session_state.feedback = None
+        st.rerun()
 
 # 7. Tonen & Beoordelen
 if 'vraag_tekst' in st.session_state:
     row = st.session_state.current_row
-    
-    # Gebruik de gevonden link uit de MD, anders fallback naar wetten.nl zoekopdracht
     bron_url = row['artikel_url'] if row['artikel_url'] else f"https://wetten.overheid.nl/zoeken?Zoektekst={row['Wet']}"
     
     st.info(f"📚 **Bron:** [{row['Wet']} - {row['Artikel']}]({bron_url})")
@@ -128,23 +128,30 @@ if 'vraag_tekst' in st.session_state:
     
     ans = st.text_area("Jouw antwoord:", key=f"ans_{st.session_state.vragen_teller}")
 
-if st.button("Check") and not st.session_state.beoordeeld:
-        check_prompt = f"Vraag: {st.session_state.vraag_tekst}\nAntwoord student: {ans}\nReferentie: {row['Wet']} {row['Artikel']}. Beoordeel streng. Begin met GOED of FOUT."
-        
-        eval_res = openai.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": check_prompt}]
-        )
-        feedback = eval_res.choices[0].message.content
-        st.write(feedback)
-        
-        st.session_state.totaal += 1
-        st.session_state.vragen_teller += 1
-        if "GOED" in feedback.upper():
-            st.session_state.score += 1
-        st.session_state.beoordeeld = True
-        
-        # Gebruik st.rerun() om door te gaan
-        if st.button("Bevestig & Volgende"):
+    # Check knop alleen tonen als er nog niet beoordeeld is
+    if not st.session_state.beoordeeld:
+        if st.button("Check antwoord"):
+            check_prompt = f"Vraag: {st.session_state.vraag_tekst}\nAntwoord student: {ans}\nReferentie: {row['Wet']} {row['Artikel']}. Beoordeel streng. Begin met GOED of FOUT."
+            
+            eval_res = openai.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": check_prompt}]
+            )
+            st.session_state.feedback = eval_res.choices[0].message.content
+            st.session_state.beoordeeld = True
+            
+            # Score direct bijwerken
+            st.session_state.totaal += 1
+            st.session_state.vragen_teller += 1
+            if "GOED" in st.session_state.feedback.upper():
+                st.session_state.score += 1
+            st.rerun()
+
+    # Feedback en Volgende knop tonen na beoordeling
+    if st.session_state.beoordeeld:
+        st.write(st.session_state.feedback)
+        if st.button("Volgende vraag"):
             del st.session_state.vraag_tekst
+            st.session_state.beoordeeld = False
+            st.session_state.feedback = None
             st.rerun()
