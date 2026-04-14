@@ -128,7 +128,7 @@ if 'vraag_tekst' in st.session_state:
     
     ans = st.text_area("Jouw antwoord:", key=f"ans_{st.session_state.vragen_teller}")
 
-    if st.button("Check") and not st.session_state.beoordeeld:
+if st.button("Check") and not st.session_state.beoordeeld:
         check_prompt = f"Vraag: {st.session_state.vraag_tekst}\nAntwoord student: {ans}\nReferentie: {row['Wet']} {row['Artikel']}. Beoordeel streng. Begin met GOED of FOUT."
         
         eval_res = openai.chat.completions.create(
@@ -143,10 +143,8 @@ if 'vraag_tekst' in st.session_state:
         if "GOED" in feedback.upper():
             st.session_state.score += 1
         st.session_state.beoordeeld = True
-# Voeg deze knop toe binnen de 'if st.button("Check")' of vlak eronder
-        if st.button("Volgende vraag"):
-            # Wis de huidige vraag uit het geheugen
-            if 'vraag_tekst' in st.session_state:
-                del st.session_state.vraag_tekst
-            # Ververs de app om direct een nieuwe vraag te genereren
+        
+        # Gebruik st.rerun() om door te gaan
+        if st.button("Bevestig & Volgende"):
+            del st.session_state.vraag_tekst
             st.rerun()
