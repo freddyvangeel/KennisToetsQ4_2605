@@ -16,7 +16,7 @@ if 'score' not in st.session_state:
 @st.cache_data
 def load_combined_data():
     # Inladen en direct kolomnamen opschonen (spaties verwijderen)
-    df = pd.read_csv('geanalyseerde_leerdoelen Q3 kennistoets.csv.csv', sep=';')
+    df = pd.read_csv('leerdoelen.csv', sep=';')
     df.columns = df.columns.str.strip()
     
     md_data = []
