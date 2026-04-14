@@ -143,4 +143,10 @@ if 'vraag_tekst' in st.session_state:
         if "GOED" in feedback.upper():
             st.session_state.score += 1
         st.session_state.beoordeeld = True
-        st.button("Bevestig & Volgende")
+# Voeg deze knop toe binnen de 'if st.button("Check")' of vlak eronder
+        if st.button("Volgende vraag"):
+            # Wis de huidige vraag uit het geheugen
+            if 'vraag_tekst' in st.session_state:
+                del st.session_state.vraag_tekst
+            # Ververs de app om direct een nieuwe vraag te genereren
+            st.rerun()
