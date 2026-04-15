@@ -5,6 +5,7 @@ import pandas as pd
 import streamlit as st
 from openai import OpenAI
 
+
 # 1. Configuratie
 st.set_page_config(page_title="Kennistoets Q4 oefenen", layout="wide")
 
@@ -102,36 +103,10 @@ def build_jurkad_dataframe(md_lines: list[str]) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def sanitize_url(url: str) -> str:
-    """
-    Zorg dat spaties en speciale tekens in het pad goed encoded worden.
-    """
-    if not url:
-        return url
-
-    # splits protocol en rest
-    match = re.match(r"^(https?://)(.*)$", url.strip())
-    if not match:
-        return url.strip().replace(" ", "%20")
-
-    protocol, rest = match.groups()
-
-    if "/" in rest:
-        host, path = rest.split("/", 1)
-        safe_path = quote("/" + path, safe="/:#?&=%[]!$&'()*+,;@")
-        return protocol + host + safe_path
-
-    return protocol + rest
-
-
-# VERWIJDER deze functie helemaal:
-# def sanitize_url(url: str): ...
-
-# VERVANG find_best_url DOOR DIT:
 def find_best_url(row: pd.Series, df_links: pd.DataFrame) -> str:
     """
     Gebruik exact de URL uit JurKad.md.
-    Geen encoding, geen aanpassing van spaties of tekens.
+    Geen encoding of aanpassing van de gevonden URL.
     """
     wet_norm = normalize_wet_name(row["Wet"], row["Artikel"])
     artikel_info = parse_artikel_info(row["Artikel"])
@@ -187,7 +162,6 @@ def is_goed(feedback: str) -> bool:
     return first_line.startswith("GOED")
 
 
-# VERVANG is_single_clear_question DOOR DIT:
 def is_single_clear_question(vraag: str) -> bool:
     """
     Sta alleen één korte, concrete vraag toe.
@@ -202,11 +176,9 @@ def is_single_clear_question(vraag: str) -> bool:
     if q.count("?") != 1:
         return False
 
-    # Te lange vragen zijn vaak samengesteld
     if len(q) > 140:
         return False
 
-    # Blokkeer veelvoorkomende deelvraagconstructies
     verboden_patronen = [
         r"\ben wat\b",
         r"\ben hoe\b",
@@ -229,12 +201,10 @@ def is_single_clear_question(vraag: str) -> bool:
         if re.search(patroon, lower_q):
             return False
 
-    # Blokkeer opsommingen van veel begrippen
     komma_aantal = q.count(",")
     if komma_aantal >= 2:
         return False
 
-    # Blokkeer expliciete lijstjes
     lijstsignalen = [
         " bestuurder",
         " begeleider",
@@ -282,6 +252,7 @@ def load_combined_data():
 df = load_combined_data()
 alle_wetten = sorted(df["Wet"].dropna().unique().tolist())
 
+
 # 4. API & sidebar
 api_key = st.secrets.get("OPENAI_API_KEY")
 
@@ -309,7 +280,6 @@ client = OpenAI(api_key=api_key)
 
 
 # 5. OpenAI functies
-# VERVANG build_question_prompt DOOR DIT:
 def build_question_prompt(vraag_data: pd.Series) -> str:
     return f"""Genereer exact ÉÉN examenvraag voor een student van de Politieacademie op mbo-4 niveau.
 
@@ -355,9 +325,8 @@ Controleer vóór output:
 - Is de vraag niet dubbelzinnig?
 
 Geef daarna alleen de definitieve vraag."""
-    
 
-# VERVANG generate_single_question DOOR DIT:
+
 def generate_single_question(vraag_data: pd.Series, max_attempts: int = 6) -> str:
     prompt = build_question_prompt(vraag_data)
     last_candidate = ""
@@ -381,10 +350,7 @@ def generate_single_question(vraag_data: pd.Series, max_attempts: int = 6) -> st
         if is_single_clear_question(candidate):
             return candidate
 
-    # Veiligheidsfallback
-    return "Wat is de kern van dit artikel?"
-
-    return last_candidate
+    return last_candidate if last_candidate else "Wat is de kern van dit artikel?"
 
 
 def beoordeel_antwoord(vraag: str, antwoord_student: str, row: pd.Series) -> str:
@@ -457,14 +423,14 @@ if st.session_state.vraag_tekst is None:
         st.rerun()
 else:
     row = st.session_state.current_row
-# VERVANG in de UI alleen de bronweergave DOOR DIT:
-bron_tekst = f"Bron: {row['Wet']} - {row['Artikel']}"
-bron_url = row["artikel_url"]
+    bron_tekst = f"Bron: {row['Wet']} - {row['Artikel']}"
+    bron_url = row["artikel_url"]
 
-st.markdown(
-    f'<a href="{bron_url}" target="_blank">{bron_tekst}</a>',
-    unsafe_allow_html=True
-)
+    st.markdown(
+        f'<a href="{bron_url}" target="_blank">{bron_tekst}</a>',
+        unsafe_allow_html=True
+    )
+
     st.subheader(st.session_state.vraag_tekst)
 
     ans = st.text_area(
