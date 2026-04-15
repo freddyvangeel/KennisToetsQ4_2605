@@ -387,18 +387,15 @@ Artikel: {row['Artikel']}
 Leerdoel: {row['Leerdoel']}
 
 Beoordelingskader:
-- Beoordeel uitsluitend op basis van het leerdoel en het genoemde artikel.
-- De vraag toetst één centrale juridische kern.
-- Wees redelijk: als de juridische kern van het antwoord klopt, is het GOED.
-- Reken een antwoord niet fout als de formulering van de student anders is, maar juridisch inhoudelijk juist.
-- Reken extra informatie niet fout, zolang die de kern niet onjuist maakt.
+- Wees coulant: als het gegeven antwoord in de buurt komt van de feitelijke kern, keur het dan direct GOED.
+- Reken een antwoord niet fout als de student het in eigen woorden omschrijft in plaats van de exacte wettekst te gebruiken.
+- Het antwoord hoeft niet 100% volledig te zijn om als GOED gemarkeerd te worden, de hoofdzaak is voldoende.
 
 Outputregels:
 1. Regel 1 is exact: GOED of FOUT
-2. Regel 2 is een korte, zakelijke toelichting van maximaal 2 zinnen
-3. Benoem kort wat juridisch juist is of wat juridisch ontbreekt
-4. Geen opsommingstekens
-5. Geen uitgebreide uitleg"""
+2. Regel 2 is een korte toelichting op het antwoord van de student.
+3. Regel 3 start met "Het correcte antwoord is:" en vermeldt ALTIJD het volledige juiste antwoord, ongeacht of de student het goed of fout had.
+4. Geen opsommingstekens."""
 
     res = client.chat.completions.create(
         model="gpt-4o-mini",
@@ -406,7 +403,7 @@ Outputregels:
         messages=[
             {
                 "role": "system",
-                "content": "Je bent een strikte maar redelijke beoordelaar van juridische examenantwoorden op mbo-4 niveau."
+                "content": "Je bent een milde beoordelaar van juridische examenantwoorden op mbo-4 niveau. Je bent er om studenten te helpen om te leren van fouten"
             },
             {"role": "user", "content": check_p},
         ],
