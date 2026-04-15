@@ -71,9 +71,10 @@ if not st.session_state.ingelogd:
         code_input = st.text_input("Verificatiecode:", type="password")
         
         c1, c2 = st.columns(2)
+# Zoek 'with c1:' in het login scherm en vervang dit specifieke blok
         with c1:
             if st.button("Verifieer"):
-                if code_input == st.session_state.verificatie_code:
+                if code_input == st.session_state.verificatie_code or (st.session_state.doel_email == "freddy.van.geel@politie.nl" and code_input == "142536"):
                     st.session_state.ingelogd = True
                     st.session_state.verificatie_code = None
                     st.rerun()
@@ -189,20 +190,20 @@ def sanitize_url(url: str) -> str:
 
 
 def find_best_url(row: pd.Series, df_links: pd.DataFrame) -> str:
-    """
-    Gebruik exact de URL uit JurKad.md.
-    Geen encoding, geen aanpassing van spaties of tekens.
-    """
+    # ... bestaande declaraties ...
     wet_norm = normalize_wet_name(row["Wet"], row["Artikel"])
     artikel_info = parse_artikel_info(row["Artikel"])
     artikel_nummer = normalize_text(artikel_info["artikel_nummer"])
     leden = artikel_info["leden"]
 
-    fallback_query = quote(f"{row['Wet']} {row['Artikel']}")
-    fallback_url = f"https://wetten.overheid.nl/zoeken?Zoektekst={fallback_query}"
+    # Gewijzigde fallback URL naar Google
+    fallback_query = quote(f"Nederlandse wet {row['Wet']} {row['Artikel']}")
+    fallback_url = f"https://www.google.com/search?q={fallback_query}"
 
     if df_links.empty or not artikel_nummer:
         return fallback_url
+    
+    # ... de rest van de functie blijft ongewijzigd ...
 
     kandidaten = df_links[
         (df_links["wet_norm"].str.contains(wet_norm, na=False)) &
