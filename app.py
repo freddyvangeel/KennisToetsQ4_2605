@@ -458,7 +458,7 @@ Beoordelingskader:
 Outputregels:
 1. Regel 1 is exact: GOED of FOUT
 2. Regel 2 is een korte toelichting op het antwoord van de student.
-3. Regel 3 start met een lege regel en daarna de tekst: "Het correcte antwoord is:" en vermeldt ALTIJD het volledige juiste antwoord, ongeacht of de student het goed of fout had, in plaintekst.
+3. Regel 3 start met een lege regel en daarna de tekst: "Het correcte antwoord is:" en vermeldt ALTIJD het volledige juiste antwoord door het wetsartikel volledig te benoemen, gevolgd door de interpretatie hiervan. Ongeacht of de student het goed of fout had, in plaintekst.
 4. Gebruik GEEN Markdown-koppen (zoals # of ##) of grote tekst.
 5. Geen opsommingstekens."""
 
