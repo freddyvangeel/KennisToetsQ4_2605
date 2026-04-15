@@ -124,7 +124,15 @@ def sanitize_url(url: str) -> str:
     return protocol + rest
 
 
+# VERWIJDER deze functie helemaal:
+# def sanitize_url(url: str): ...
+
+# VERVANG find_best_url DOOR DIT:
 def find_best_url(row: pd.Series, df_links: pd.DataFrame) -> str:
+    """
+    Gebruik exact de URL uit JurKad.md.
+    Geen encoding, geen aanpassing van spaties of tekens.
+    """
     wet_norm = normalize_wet_name(row["Wet"], row["Artikel"])
     artikel_info = parse_artikel_info(row["Artikel"])
     artikel_nummer = normalize_text(artikel_info["artikel_nummer"])
@@ -156,15 +164,15 @@ def find_best_url(row: pd.Series, df_links: pd.DataFrame) -> str:
                 kandidaten["leden"].apply(lambda x: lid in x if isinstance(x, list) else False)
             ]
             if not lid_match.empty:
-                return sanitize_url(lid_match.iloc[0]["url"])
+                return lid_match.iloc[0]["url"]
 
     zonder_lid = kandidaten[
         kandidaten["leden"].apply(lambda x: len(x) == 0 if isinstance(x, list) else True)
     ]
     if not zonder_lid.empty:
-        return sanitize_url(zonder_lid.iloc[0]["url"])
+        return zonder_lid.iloc[0]["url"]
 
-    return sanitize_url(kandidaten.iloc[0]["url"])
+    return kandidaten.iloc[0]["url"]
 
 
 def extract_first_line(text: str) -> str:
@@ -179,42 +187,64 @@ def is_goed(feedback: str) -> bool:
     return first_line.startswith("GOED")
 
 
+# VERVANG is_single_clear_question DOOR DIT:
 def is_single_clear_question(vraag: str) -> bool:
     """
-    Blokkeer dubbele of samengestelde vragen.
+    Sta alleen één korte, concrete vraag toe.
+    Blokkeer samengestelde vragen, opsommingen en meerledige uitvraag.
     """
     if not vraag:
         return False
 
     q = vraag.strip()
+    lower_q = q.lower()
 
     if q.count("?") != 1:
         return False
 
-    lower_q = q.lower()
+    # Te lange vragen zijn vaak samengesteld
+    if len(q) > 140:
+        return False
 
+    # Blokkeer veelvoorkomende deelvraagconstructies
     verboden_patronen = [
         r"\ben wat\b",
-        r"\ben onder welke\b",
+        r"\ben hoe\b",
         r"\ben wanneer\b",
         r"\ben waarom\b",
-        r"\ben hoe\b",
-        r"\ben welke voorwaarden\b",
-        r"\bwat .* en wat\b",
-        r"\bwie .* en wat\b",
-        r"\bwelke .* en wat\b",
-        r"\bnoem .* en .*",
+        r"\ben welke\b",
+        r"\ben onder welke\b",
+        r"\ben volgens welke\b",
+        r",\s*en\s+",
+        r"\bwelke .* en .*",
+        r"\bwie .* en .*",
+        r"\bwat .* en .*",
         r"\bbeschrijf .* en .*",
+        r"\bnoem .* en .*",
         r"\bleg .* en .* uit\b",
-        r",\s*en\s+wat\b",
-        r",\s*en\s+welke\b",
-        r",\s*en\s+hoe\b",
-        r",\s*en\s+wanneer\b",
+        r"\bdefinities van\b",
+        r"\bvoorwaarden voor\b.*\ben\b",
     ]
-
     for patroon in verboden_patronen:
         if re.search(patroon, lower_q):
             return False
+
+    # Blokkeer opsommingen van veel begrippen
+    komma_aantal = q.count(",")
+    if komma_aantal >= 2:
+        return False
+
+    # Blokkeer expliciete lijstjes
+    lijstsignalen = [
+        " bestuurder",
+        " begeleider",
+        " begeleiden",
+        " motorrijtuig",
+        " weg",
+    ]
+    hits = sum(1 for item in lijstsignalen if item in lower_q)
+    if hits >= 2:
+        return False
 
     return True
 
@@ -279,6 +309,7 @@ client = OpenAI(api_key=api_key)
 
 
 # 5. OpenAI functies
+# VERVANG build_question_prompt DOOR DIT:
 def build_question_prompt(vraag_data: pd.Series) -> str:
     return f"""Genereer exact ÉÉN examenvraag voor een student van de Politieacademie op mbo-4 niveau.
 
@@ -290,51 +321,55 @@ Leerdoel: {vraag_data['Leerdoel']}
 Doel:
 Formuleer één duidelijke, juridisch correcte en ondubbelzinnige vraag die direct aansluit op het leerdoel.
 
-Strikte regels:
+Harde regels:
 1. Stel exact één vraag.
-2. Stel geen deelvragen.
-3. Stel geen samengestelde vraag.
-4. Gebruik geen woorden of formuleringen die een tweede opdracht starten, zoals:
+2. Stel exact één opdracht.
+3. Vraag nooit naar meerdere begrippen, definities, voorwaarden, personen, uitzonderingen of onderdelen tegelijk.
+4. Gebruik geen opsomming in de vraag.
+5. Gebruik geen formuleringen zoals:
    - en wat
    - en hoe
    - en wanneer
    - en waarom
+   - en welke
    - en onder welke voorwaarden
-   - en welke voorwaarden
-5. Toets precies één centrale denkhandeling.
-6. De vraag moet concreet zijn en niet vaag.
-7. De vraag moet rechtstreeks aansluiten op het leerdoel en het genoemde artikel.
-8. Gebruik geen casus, geen inleiding en geen contextverhaal.
-9. Geef alleen de vraag als output.
-10. Eindig met precies één vraagteken.
+6. Als het artikel meerdere begrippen of onderdelen bevat, kies dan precies één begrip of één juridisch punt.
+7. De vraag moet concreet zijn.
+8. De vraag moet direct aansluiten op het leerdoel.
+9. Geen casus, geen inleiding, geen contextverhaal.
+10. Alleen de vraag als output.
+11. Maximaal 18 woorden.
+12. Eindig met precies één vraagteken.
 
-Voorbeelden van wat NIET mag:
-- "Wie ... en wat ..."
-- "Welke ... en onder welke voorwaarden ..."
-- "Wat ... en waarom ..."
-- "Hoe ... en wanneer ..."
+Voorbeeld van onjuiste output:
+- "Beschrijf de definities van motorrijtuig, weg, bestuurder, begeleider en begeleiden ..."
+
+Voorbeeld van juiste output:
+- "Wat is volgens artikel 1 WVW 1994 een bestuurder?"
+- "Wanneer is iemand volgens artikel 3 Politiewet ambtenaar van politie?"
 
 Controleer vóór output:
-- Bevat de vraag echt maar één opdracht?
+- Is maar één begrip of norm bevraagd?
+- Staat er geen opsomming in?
+- Is de vraag kort en concreet?
 - Is de vraag niet dubbelzinnig?
-- Is de vraag concreet genoeg voor mbo-4?
-- Sluit de vraag direct aan op het leerdoel?
 
 Geef daarna alleen de definitieve vraag."""
     
 
-def generate_single_question(vraag_data: pd.Series, max_attempts: int = 4) -> str:
+# VERVANG generate_single_question DOOR DIT:
+def generate_single_question(vraag_data: pd.Series, max_attempts: int = 6) -> str:
     prompt = build_question_prompt(vraag_data)
-
     last_candidate = ""
+
     for _ in range(max_attempts):
         res = client.chat.completions.create(
             model="gpt-4o-mini",
-            temperature=0.1,
+            temperature=0.0,
             messages=[
                 {
                     "role": "system",
-                    "content": "Je schrijft korte, concrete en ondubbelzinnige juridische examenvragen voor de Politieacademie."
+                    "content": "Je schrijft zeer korte, concrete en enkelvoudige juridische examenvragen voor de Politieacademie."
                 },
                 {"role": "user", "content": prompt},
             ],
@@ -345,6 +380,9 @@ def generate_single_question(vraag_data: pd.Series, max_attempts: int = 4) -> st
 
         if is_single_clear_question(candidate):
             return candidate
+
+    # Veiligheidsfallback
+    return "Wat is de kern van dit artikel?"
 
     return last_candidate
 
@@ -419,10 +457,14 @@ if st.session_state.vraag_tekst is None:
         st.rerun()
 else:
     row = st.session_state.current_row
-    bron_tekst = f"Bron: {row['Wet']} - {row['Artikel']}"
-    bron_url = row["artikel_url"]
+# VERVANG in de UI alleen de bronweergave DOOR DIT:
+bron_tekst = f"Bron: {row['Wet']} - {row['Artikel']}"
+bron_url = row["artikel_url"]
 
-    st.markdown(f"[{bron_tekst}]({bron_url})")
+st.markdown(
+    f'<a href="{bron_url}" target="_blank">{bron_tekst}</a>',
+    unsafe_allow_html=True
+)
     st.subheader(st.session_state.vraag_tekst)
 
     ans = st.text_area(
