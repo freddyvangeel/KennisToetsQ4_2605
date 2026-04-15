@@ -389,12 +389,13 @@ Leerdoel: {row['Leerdoel']}
 Beoordelingskader:
 - Wees coulant: als het gegeven antwoord in de buurt komt van de feitelijke kern, keur het dan direct GOED.
 - Reken een antwoord niet fout als de student het in eigen woorden omschrijft in plaats van de exacte wettekst te gebruiken.
-- Het antwoord hoeft niet 100% volledig te zijn om als GOED gemarkeerd te worden, de hoofdzaak is voldoende.
+- Het antwoord hoeft niet 100% volledig te zijn om als GOED gemarkeerd te worden, de hoofdzaak is voldoende; geef dan aan dat de student vollediger kan zijn in het antwoord.
 
 Outputregels:
 1. Regel 1 is exact: GOED of FOUT
 2. Regel 2 is een korte toelichting op het antwoord van de student.
-3. Regel 3 start met "Het correcte antwoord is:" en vermeldt ALTIJD het volledige juiste antwoord, ongeacht of de student het goed of fout had.
+3. Regel 3 een scheidingslijn op het scherm
+3. Regel 4 start met de dikgedrukte tekst: "Het correcte antwoord is:" en vermeldt ALTIJD het volledige juiste antwoord, ongeacht of de student het goed of fout had, in plaintekst.
 4. Geen opsommingstekens."""
 
     res = client.chat.completions.create(
