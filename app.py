@@ -480,7 +480,7 @@ else:
         st.markdown("---")
         st.write(st.session_state.feedback)
 
-    if st.button("Volgende vraag"):
-        st.session_state.vragen_teller += 1
-           genereer_vraag()
-           st.rerun()
+        if st.button("Volgende vraag"):
+            st.session_state.vragen_teller += 1
+            genereer_vraag()
+            st.rerun()
