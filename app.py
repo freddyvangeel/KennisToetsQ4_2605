@@ -394,9 +394,9 @@ Beoordelingskader:
 Outputregels:
 1. Regel 1 is exact: GOED of FOUT
 2. Regel 2 is een korte toelichting op het antwoord van de student.
-3. Regel 3 een scheidingslijn op het scherm
-3. Regel 4 start met de tekst: "Het correcte antwoord is:" en vermeldt ALTIJD het volledige juiste antwoord, ongeacht of de student het goed of fout had, in plaintekst.
-4. Geen opsommingstekens."""
+3. Regel 3 start met een lege regel en daarna de tekst: "Het correcte antwoord is:" en vermeldt ALTIJD het volledige juiste antwoord, ongeacht of de student het goed of fout had, in plaintekst.
+4. Gebruik GEEN Markdown-koppen (zoals # of ##) of grote tekst.
+5. Geen opsommingstekens."""
 
     res = client.chat.completions.create(
         model="gpt-4o-mini",
@@ -404,7 +404,7 @@ Outputregels:
         messages=[
             {
                 "role": "system",
-                "content": "Je bent een milde beoordelaar van juridische examenantwoorden op mbo-4 niveau. Je bent er om studenten te helpen om te leren van fouten"
+                "content": "Je bent een milde beoordelaar van juridische examenantwoorden op mbo-4 niveau. Je bent er om studenten te helpen om te leren van fouten."
             },
             {"role": "user", "content": check_p},
         ],
