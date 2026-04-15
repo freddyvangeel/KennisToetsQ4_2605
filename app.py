@@ -453,14 +453,16 @@ Leerdoel: {row['Leerdoel']}
 Beoordelingskader:
 - Wees coulant: als het gegeven antwoord in de buurt komt van de feitelijke kern, keur het dan direct GOED.
 - Reken een antwoord niet fout als de student het in eigen woorden omschrijft in plaats van de exacte wettekst te gebruiken.
-- Het antwoord hoeft niet 100% volledig te zijn om als GOED gemarkeerd te worden, de hoofdzaak is voldoende; geef dan aan dat de student vollediger kan zijn in het antwoord.
 
 Outputregels:
 1. Regel 1 is exact: GOED of FOUT
 2. Regel 2 is een korte toelichting op het antwoord van de student.
-3. Regel 3 start met een lege regel en daarna de tekst: "Het correcte antwoord is:" en het volledige wetsartikel, gevolgd door de interpretatie hiervan. Ongeacht of de student het goed of fout had, in plaintekst.
-4. Gebruik GEEN Markdown-koppen (zoals # of ##) of grote tekst.
-5. Geen opsommingstekens."""
+3. Regel 3 is volledig leeg.
+4. Regel 4 start met de exacte tekst: "Het correcte antwoord is: "
+5. Schrijf direct achter de tekst op regel 4 vanuit je eigen kennis de letterlijke, volledige wettekst van dit specifieke artikel uit.
+6. Schrijf op de volgende regel een korte interpretatie van dit wetsartikel in begrijpelijke taal.
+7. Gebruik GEEN Markdown-koppen (zoals # of ##) of grote tekst.
+8. Gebruik GEEN opsommingstekens."""
 
     res = client.chat.completions.create(
         model="gpt-4o-mini",
