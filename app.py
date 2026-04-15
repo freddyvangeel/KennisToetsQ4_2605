@@ -395,7 +395,7 @@ Outputregels:
 1. Regel 1 is exact: GOED of FOUT
 2. Regel 2 is een korte toelichting op het antwoord van de student.
 3. Regel 3 een scheidingslijn op het scherm
-3. Regel 4 start met de dikgedrukte tekst: "Het correcte antwoord is:" en vermeldt ALTIJD het volledige juiste antwoord, ongeacht of de student het goed of fout had, in plaintekst.
+3. Regel 4 start met de tekst: "Het correcte antwoord is:" en vermeldt ALTIJD het volledige juiste antwoord, ongeacht of de student het goed of fout had, in plaintekst.
 4. Geen opsommingstekens."""
 
     res = client.chat.completions.create(
@@ -480,10 +480,7 @@ else:
         st.markdown("---")
         st.write(st.session_state.feedback)
 
-        if st.button("Volgende vraag"):
-            st.session_state.vragen_teller += 1
-            st.session_state.vraag_tekst = None
-            st.session_state.beoordeeld = False
-            st.session_state.feedback = None
-            st.session_state.current_row = None
-            st.rerun()
+    if st.button("Volgende vraag"):
+        st.session_state.vragen_teller += 1
+           genereer_vraag()
+           st.rerun()
