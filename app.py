@@ -7,7 +7,9 @@ import re
 st.set_page_config(page_title="Politie Toets Trainer Q3", layout="wide")
 
 if 'score' not in st.session_state:
-    st.session_state.score, st.session_state.totaal, st.session_state.vragen_teller = 0, 0, 0
+    st.session_state.score = 0
+    st.session_state.totaal = 0
+    st.session_state.vragen_teller = 0
 
 # 2. Data Laden & Koppelen
 @st.cache_data
@@ -39,7 +41,8 @@ def load_combined_data():
         # Pak artikelnummer uit kolom 'Artikel' (bijv. "artikel 3" -> "3")
         art_raw = str(row['Artikel']).lower()
         art_match = re.search(r"(\d+[:.]?\d*)", art_raw)
-        if not art_match: return f"https://wetten.overheid.nl/zoeken?Zoektekst={row['Wet']}"
+        if not art_match: 
+            return f"https://wetten.overheid.nl/zoeken?Zoektekst={row['Wet']}"
         
         clean_art = art_match.group(1)
         wet_val = str(row['Wet']).lower()
@@ -60,14 +63,19 @@ alle_wetten = sorted(df['Wet'].dropna().unique().tolist())
 # 3. API & Sidebar
 api_key = st.secrets.get("OPENAI_API_KEY")
 with st.sidebar:
-    if not api_key: api_key = st.text_input("OpenAI API Key", type="password")
+    if not api_key: 
+        api_key = st.text_input("OpenAI API Key", type="password")
+    
     gekozen_wetten = st.multiselect("Filter op wet", options=["Allemaal"] + alle_wetten, default=["Allemaal"])
     aantal_doel = st.number_input("Totaal vragen", value=25)
+    
     if st.button("Reset Score"):
         st.session_state.score, st.session_state.totaal, st.session_state.vragen_teller = 0, 0, 0
         st.rerun()
 
-if not api_key: st.stop()
+if not api_key: 
+    st.stop()
+
 openai.api_key = api_key
 
 # 4. Helper functies
@@ -76,22 +84,38 @@ def genereer_vraag():
     vraag_data = filtered_df.sample(n=1).iloc[0]
     st.session_state.current_row = vraag_data
     
-    prompt = f"""Genereer EEN specifieke examenvraag voor de Politieacademie.
-    Wet: {vraag_data['Wet']}
-    Artikel: {vraag_data['Artikel']}
-    Leerdoel: {vraag_data['Leerdoel']}
+    prompt = f"""
+    Genereer exact ÉÉN examenvraag voor een student van de Politieacademie op **mbo-4 niveau**.
+
+    Gebruik uitsluitend deze invoer:
+    - Wet: {vraag_data['Wet']}
+    - Artikel: {vraag_data['Artikel']}
+    - Leerdoel: {vraag_data['Leerdoel']}
+
+    Opdracht:
+    Formuleer één duidelijke, juridisch correcte en ondubbelzinnige vraag die direct aansluit op het leerdoel en op de inhoud en strekking van het genoemde artikel.
+
+    Strikte regels:
+    1. Stel exact **één** vraag.
+    2. Gebruik **geen** deelvragen.
+    3. Gebruik **geen** verdiepingsvraag, toelichtingsvraag of vervolg zoals: "waarom", "licht toe", "verklaar".
+    4. Toets één centrale denkhandeling (beschrijven, benoemen, uitleggen, herkennen, toepassen).
+    5. Passend bij mbo-4: helder en concreet.
+    6. Geen dubbelzinnigheid of samengestelde vragen.
+    7. Directe aansluiting op het genoemde artikel.
+    8. Geen inleiding of casus ("Stel je voor...").
+    9. Alleen de vraag als output.
+    """
     
-    STRICTE REGELS:
-    1. Stel exact ÉÉN vraag. Geen deelvragen, geen 'en waarom?'.
-    2. Stel de vraag direct, zonder inleiding of 'Stel je voor'.
-    3. Focus op de juridische toepassing of uitleg van dit specifieke artikel."""
-    
-    res = openai.chat.completions.create(model="gpt-4o-mini", messages=[{"role": "user", "content": prompt}])
+    res = openai.chat.completions.create(
+        model="gpt-4o-mini", 
+        messages=[{"role": "user", "content": prompt}]
+    )
     st.session_state.vraag_tekst = res.choices[0].message.content
     st.session_state.beoordeeld = False
     st.session_state.feedback = None
 
-# 5. UI
+# 5. UI Layout
 st.title("🚓 Politie Toets Trainer")
 c1, c2, c3 = st.columns(3)
 c1.metric("Vraag", f"{st.session_state.vragen_teller} / {aantal_doel}")
@@ -99,6 +123,7 @@ c2.metric("Goed", st.session_state.score)
 perc = (st.session_state.score / st.session_state.totaal * 100) if st.session_state.totaal > 0 else 0
 c3.metric("Score", f"{round(perc, 1)}%")
 
+# Vraag weergave logica
 if 'vraag_tekst' not in st.session_state:
     if st.button("Start / Volgende"):
         genereer_vraag()
@@ -111,23 +136,33 @@ else:
 
     if not st.session_state.beoordeeld:
         if st.button("Check"):
-            check_p = f"""Vraag: {st.session_state.vraag_tekst}
+            check_p = f"""
+            Beoordeel het antwoord voor een Politieacademie examen (mbo-4).
+            Vraag: {st.session_state.vraag_tekst}
             Antwoord student: {ans}
-            Juridisch kader: {row['Wet']} {row['Artikel']}
+            Wet/Artikel: {row['Wet']} {row['Artikel']}
+            Leerdoel: {row['Leerdoel']}
+
+            Outputregels:
+            - Regel 1: Alleen GOED of FOUT.
+            - Regel 2: Korte, zakelijke toelichting (max 2 zinnen).
+            - Regel 3: Wat ontbreekt of wat is juist aanwezig.
+            Beoordeel redelijk op de juridische kern.
+            """
             
-            BEOORDELINGSRICHTLIJN:
-            - Start ALTIJD met 'GOED' of 'FOUT'.
-            - Wees redelijk: als de juridische kern klopt, is het GOED.
-            - Geef een korte, zakelijke toelichting."""
-            
-            res = openai.chat.completions.create(model="gpt-4o-mini", messages=[{"role": "user", "content": check_p}])
+            res = openai.chat.completions.create(
+                model="gpt-4o-mini", 
+                messages=[{"role": "user", "content": check_p}]
+            )
             st.session_state.feedback = res.choices[0].message.content
             st.session_state.beoordeeld = True
             st.session_state.totaal += 1
-            if "GOED" in st.session_state.feedback.upper(): st.session_state.score += 1
+            if "GOED" in st.session_state.feedback.upper()[:10]: 
+                st.session_state.score += 1
             st.rerun()
 
     if st.session_state.beoordeeld:
+        st.markdown("---")
         st.write(st.session_state.feedback)
         if st.button("Volgende vraag"):
             st.session_state.vragen_teller += 1
