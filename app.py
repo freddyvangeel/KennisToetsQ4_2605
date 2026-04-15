@@ -21,6 +21,7 @@ SESSION_DEFAULTS = {
     "ingelogd": False,
     "verificatie_code": None,
     "doel_email": None,
+    "gestelde_vragen_index": [],
 }
 
 for key, value in SESSION_DEFAULTS.items():
@@ -357,7 +358,7 @@ with st.sidebar:
 
     if st.button("Reset score"):
         for key, value in SESSION_DEFAULTS.items():
-            st.session_state[key] = value
+            st.session_state[key] = [] if isinstance(value, list) else value
         st.rerun()
 
 if not api_key:
@@ -482,16 +483,20 @@ def genereer_vraag():
     else:
         filtered_df = df[df["Wet"].isin(gekozen_wetten)].copy()
 
+    # Sluit rijen uit die al in het geheugen staan
+    filtered_df = filtered_df.drop(st.session_state.gestelde_vragen_index, errors='ignore')
+
     if filtered_df.empty:
-        st.error("Geen leerdoelen gevonden voor de gekozen filter.")
+        st.warning("Alle beschikbare vragen voor deze selectie zijn gesteld.")
         return
 
     vraag_data = filtered_df.sample(n=1).iloc[0]
+    st.session_state.gestelde_vragen_index.append(vraag_data.name) # Sla de gekozen rij op
+    
     st.session_state.current_row = vraag_data
     st.session_state.vraag_tekst = generate_single_question(vraag_data)
     st.session_state.beoordeeld = False
     st.session_state.feedback = None
-
 
 # 6. UI
 st.title("Kennistoets Q4 oefenen")
