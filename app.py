@@ -1,6 +1,8 @@
+import smtplib
+import random
+from email.mime.text import MIMEText
 import re
 from urllib.parse import quote
-
 import pandas as pd
 import streamlit as st
 from openai import OpenAI
@@ -16,12 +18,73 @@ SESSION_DEFAULTS = {
     "feedback": None,
     "vraag_tekst": None,
     "current_row": None,
+    "ingelogd": False,
+    "verificatie_code": None,
+    "doel_email": None,
 }
 
 for key, value in SESSION_DEFAULTS.items():
     if key not in st.session_state:
         st.session_state[key] = value
 
+# --- LOGIN LOGICA ---
+def stuur_email(ontvanger_email, code):
+    zender_email = st.secrets.get("SMTP_EMAIL")
+    zender_wachtwoord = st.secrets.get("SMTP_PASSWORD")
+    
+    if not zender_email or not zender_wachtwoord:
+        st.error("SMTP inloggegevens ontbreken in de secrets.")
+        return False
+        
+    msg = MIMEText(f"Je verificatiecode voor de Kennistoets Q4 is: {code}")
+    msg['Subject'] = 'Login code Politie toets trainer'
+    msg['From'] = zender_email
+    msg['To'] = ontvanger_email
+
+    try:
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(zender_email, zender_wachtwoord)
+            server.send_message(msg)
+        return True
+    except Exception as e:
+        st.error(f"Fout bij verzenden e-mail: {e}")
+        return False
+
+if not st.session_state.ingelogd:
+    st.title("🔒 Login")
+    
+    if st.session_state.verificatie_code is None:
+        email_input = st.text_input("Vul je @politie.nl e-mailadres in:")
+        if st.button("Stuur code"):
+            if email_input.endswith("@politie.nl"):
+                code = str(random.randint(100000, 999999))
+                if stuur_email(email_input, code):
+                    st.session_state.verificatie_code = code
+                    st.session_state.doel_email = email_input
+                    st.success("Code verstuurd. Check je e-mail.")
+                    st.rerun()
+            else:
+                st.error("Alleen @politie.nl adressen hebben toegang.")
+    else:
+        st.info(f"Er is een code gestuurd naar {st.session_state.doel_email}")
+        code_input = st.text_input("Verificatiecode:", type="password")
+        
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("Verifieer"):
+                if code_input == st.session_state.verificatie_code:
+                    st.session_state.ingelogd = True
+                    st.session_state.verificatie_code = None
+                    st.rerun()
+                else:
+                    st.error("Onjuiste code.")
+        with c2:
+            if st.button("Annuleer"):
+                st.session_state.verificatie_code = None
+                st.session_state.doel_email = None
+                st.rerun()
+
+    st.stop()
 
 # 2. Normaliseren en parsen
 def normalize_text(value: str) -> str:
