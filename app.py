@@ -56,7 +56,8 @@ if not st.session_state.ingelogd:
     st.title("🔒 Login")
 
     if st.session_state.verificatie_code is None:
-        email_input = st.text_input("Vul je e-mailadres in (@politie.nl, @politieacademie.nl of @webmail.politieacademie.nl):")
+        #email_input = st.text_input("Vul je e-mailadres in (@politie.nl, @politieacademie.nl of @webmail.politieacademie.nl):")
+        email_input = st.text_input("De applicatie is tijdelijk niet te gebruiken")
         st.caption("*Er wordt geen data opgeslagen*")        
         if st.button("Stuur code"):    
             toegestane_domeinen = ("@politie.nl", "@politieacademie.nl", "@webmail.politieacademie.nl")
@@ -367,11 +368,13 @@ with st.sidebar:
 if not api_key:
     st.stop()
 
-client = genai.Client(api_key=api_key, http_options={'api_version': 'v1'})
+client = genai.Client(api_key=api_key)
 
 # 5. Gemini functies
 def build_question_prompt(vraag_data: pd.Series) -> str:
-    return f"""Genereer exact ÉÉN examenvraag voor een student van de Politieacademie op mbo-4 niveau.
+    return f"""[SYSTEEM INSTRUCTIE: Je bent een API die uitsluitend ruwe tekst output genereert. Je gebruikt nooit markdown, nooit aanhalingstekens en geeft nooit beleefde inleidingen of uitleg.]
+
+Genereer exact ÉÉN examenvraag voor een student van de Politieacademie op mbo-4 niveau.
 
 Gebruik uitsluitend deze invoer:
 Wet: {vraag_data['Wet']}
@@ -408,8 +411,7 @@ def generate_single_question(vraag_data: pd.Series, max_attempts: int = 6) -> st
     prompt = build_question_prompt(vraag_data)
 
     config = types.GenerateContentConfig(
-        temperature=0.0,
-        system_instruction="Je bent een API die uitsluitend ruwe tekst output genereert. Je gebruikt nooit markdown, nooit aanhalingstekens en geeft nooit beleefde inleidingen of uitleg."
+        temperature=0.0
     )
 
     for _ in range(max_attempts):
@@ -432,7 +434,9 @@ def generate_single_question(vraag_data: pd.Series, max_attempts: int = 6) -> st
 
 
 def beoordeel_antwoord(vraag: str, antwoord_student: str, row: pd.Series) -> str:
-    check_p = f"""Beoordeel het antwoord van een student op een examenvraag.
+    check_p = f"""[SYSTEEM INSTRUCTIE: Je bent een examinator voor de Politieacademie. Je kent de Nederlandse wetgeving woord voor woord uit je hoofd. Je citeert altijd de exacte wet en laat je nooit misleiden door een foutief antwoord van een student.]
+
+Beoordeel het antwoord van een student op een examenvraag.
 
 Vraag: {vraag}
 Antwoord student: {antwoord_student}
@@ -459,8 +463,7 @@ Outputregels (Houd je hier strikt aan):
 8. Gebruik GEEN opsommingstekens."""
 
     config = types.GenerateContentConfig(
-        temperature=0.0,
-        system_instruction="Je bent een examinator voor de Politieacademie. Je kent de Nederlandse wetgeving woord voor woord uit je hoofd. Je citeert altijd de exacte wet en laat je nooit misleiden door een foutief antwoord van een student."
+        temperature=0.0
     )
 
     try:
