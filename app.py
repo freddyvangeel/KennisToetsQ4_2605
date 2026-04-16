@@ -552,3 +552,9 @@ else:
             st.session_state.vragen_teller += 1
             genereer_vraag()
             st.rerun()
+if st.button("Toon beschikbare modellen"):
+    try:
+        for m in client.models.list():
+            st.write(m.name)
+    except Exception as e:
+        st.error(f"Kan lijst niet ophalen: {e}")
