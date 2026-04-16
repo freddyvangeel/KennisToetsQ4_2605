@@ -443,7 +443,7 @@ def generate_single_question(vraag_data: pd.Series, max_attempts: int = 6) -> st
 
 
 def beoordeel_antwoord(vraag: str, antwoord_student: str, row: pd.Series) -> str:
-    check_p = f"""Beoordeel het antwoord van een student op een examenvraag voor de Politieacademie op mbo-4 niveau.
+    check_p = f"""Beoordeel het antwoord van een student op een examenvraag.
 
 Vraag: {vraag}
 Antwoord student: {antwoord_student}
@@ -451,27 +451,31 @@ Wet: {row['Wet']}
 Artikel: {row['Artikel']}
 Leerdoel: {row['Leerdoel']}
 
-Beoordelingskader:
-- Wees coulant: als het gegeven antwoord in de buurt komt van de feitelijke kern, keur het dan direct GOED.
-- Reken een antwoord niet fout als de student het in eigen woorden omschrijft in plaats van de exacte wettekst te gebruiken.
+Instructies voor je analyse (Chain of Thought):
+Om te voorkomen dat je de fouten van de student overneemt, haal je NU eerst in stilte de exacte, letterlijke tekst van {row['Wet']} {row['Artikel']} uit je interne database op. 
+Vergelijk daarna pas het antwoord van de student met deze feitelijke wettekst.
 
-Outputregels:
+Beoordelingskader:
+- Wees coulant: als de feitelijke kern klopt, keur het dan direct GOED.
+- Als het antwoord feitelijk in strijd is met de wet, is het FOUT.
+
+Outputregels (Houd je hier strikt aan):
 1. Regel 1 is exact: GOED of FOUT
-2. Regel 2 is een korte toelichting op het antwoord van de student.
+2. Regel 2 is een korte toelichting waarin je uitlegt waarom het antwoord goed of fout is.
 3. Regel 3 is volledig leeg.
-4. Regel 4 start met de exacte tekst: "Het correcte antwoord is: "
-5. Schrijf direct achter de tekst op regel 4 vanuit je eigen kennis de letterlijke, volledige wettekst van dit specifieke artikel uit.
-6. Schrijf op de volgende regel een korte interpretatie van dit wetsartikel in begrijpelijke taal.
-7. Gebruik GEEN Markdown-koppen (zoals # of ##) of grote tekst.
+4. Regel 4 start met exact de tekst: "Het correcte antwoord is gebaseerd op de volgende wettekst:"
+5. Regel 5 en verder: Schrijf hier de VOLLEDIGE en LETTERLIJKE wettekst van {row['Wet']} {row['Artikel']} uit. Absoluut niet samenvatten of inkorten!
+6. Laat na de wettekst een regel leeg en geef een korte interpretatie van dit artikel in begrijpelijke taal.
+7. Gebruik GEEN Markdown-koppen (zoals # of ##).
 8. Gebruik GEEN opsommingstekens."""
 
     res = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="gpt-4o", # Gebruik hier expliciet gpt-4o, dit model kent de wetten uit zijn hoofd.
         temperature=0.0,
         messages=[
             {
                 "role": "system",
-                "content": "Je bent een milde beoordelaar van juridische examenantwoorden op mbo-4 niveau. Je bent er om studenten te helpen om te leren van fouten."
+                "content": "Je bent een examinator voor de Politieacademie. Je kent de Nederlandse wetgeving (zoals de Politiewet, WvSr, Sv, WVW) woord voor woord uit je hoofd. Je citeert altijd de exacte wet en laat je nooit misleiden door een foutief antwoord van een student."
             },
             {"role": "user", "content": check_p},
         ],
