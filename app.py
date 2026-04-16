@@ -369,7 +369,7 @@ if not api_key:
 genai.configure(api_key=api_key)
 
 
-# 5. OpenAI functies
+# 5. Gemini functies
 def build_question_prompt(vraag_data: pd.Series) -> str:
     return f"""Genereer exact ÉÉN examenvraag voor een student van de Politieacademie op mbo-4 niveau.
 
@@ -421,24 +421,23 @@ def generate_single_question(vraag_data: pd.Series, max_attempts: int = 6) -> st
     prompt = build_question_prompt(vraag_data)
     last_candidate = ""
 
+    model = genai.GenerativeModel(
+        model_name="gemini-1.5-flash",
+        system_instruction="Je schrijft zeer korte, concrete en enkelvoudige juridische examenvragen voor de Politieacademie.",
+        generation_config=genai.GenerationConfig(temperature=0.0)
+    )
+
     for _ in range(max_attempts):
-        res = client.chat.completions.create(
-            model="gpt-4o-mini",
-            temperature=0.0,
-            messages=[
-                {
-                    "role": "system",
-                    "content": "Je schrijft zeer korte, concrete en enkelvoudige juridische examenvragen voor de Politieacademie."
-                },
-                {"role": "user", "content": prompt},
-            ],
-        )
+        try:
+            res = model.generate_content(prompt)
+            candidate = extract_first_line(res.text).strip()
+            last_candidate = candidate
 
-        candidate = extract_first_line(res.choices[0].message.content).strip()
-        last_candidate = candidate
-
-        if is_single_clear_question(candidate):
-            return candidate
+            if is_single_clear_question(candidate):
+                return candidate
+        except Exception as e:
+            st.error(f"Fout bij genereren vraag: {e}")
+            return "Wat is de kern van dit artikel?"
 
     return "Wat is de kern van dit artikel?"
 
@@ -470,41 +469,17 @@ Outputregels (Houd je hier strikt aan):
 7. Gebruik GEEN Markdown-koppen (zoals # of ##).
 8. Gebruik GEEN opsommingstekens."""
 
-    res = client.chat.completions.create(
-        model="gpt-4o", # Gebruik hier expliciet gpt-4o, dit model kent de wetten uit zijn hoofd.
-        temperature=0.0,
-        messages=[
-            {
-                "role": "system",
-                "content": "Je bent een examinator voor de Politieacademie. Je kent de Nederlandse wetgeving (zoals de Politiewet, WvSr, Sv, WVW) woord voor woord uit je hoofd. Je citeert altijd de exacte wet en laat je nooit misleiden door een foutief antwoord van een student."
-            },
-            {"role": "user", "content": check_p},
-        ],
+    model = genai.GenerativeModel(
+        model_name="gemini-1.5-pro",
+        system_instruction="Je bent een examinator voor de Politieacademie. Je kent de Nederlandse wetgeving (zoals de Politiewet, WvSr, Sv, WVW) woord voor woord uit je hoofd. Je citeert altijd de exacte wet en laat je nooit misleiden door een foutief antwoord van een student.",
+        generation_config=genai.GenerationConfig(temperature=0.0)
     )
 
-    return res.choices[0].message.content.strip()
-
-
-def genereer_vraag():
-    if "Allemaal" in gekozen_wetten or not gekozen_wetten:
-        filtered_df = df.copy()
-    else:
-        filtered_df = df[df["Wet"].isin(gekozen_wetten)].copy()
-
-    # Sluit rijen uit die al in het geheugen staan
-    filtered_df = filtered_df.drop(st.session_state.gestelde_vragen_index, errors='ignore')
-
-    if filtered_df.empty:
-        st.warning("Alle beschikbare vragen voor deze selectie zijn gesteld.")
-        return
-
-    vraag_data = filtered_df.sample(n=1).iloc[0]
-    st.session_state.gestelde_vragen_index.append(vraag_data.name) # Sla de gekozen rij op
-    
-    st.session_state.current_row = vraag_data
-    st.session_state.vraag_tekst = generate_single_question(vraag_data)
-    st.session_state.beoordeeld = False
-    st.session_state.feedback = None
+    try:
+        res = model.generate_content(check_p)
+        return res.text.strip()
+    except Exception as e:
+        return f"FOUT\nEr is een technische fout opgetreden bij het beoordelen: {e}"
 
 # 6. UI
 st.title("Kennistoets Q4 oefenen")
