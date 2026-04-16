@@ -526,14 +526,15 @@ else:
     )
     st.subheader(st.session_state.vraag_tekst)
 
-    ans = st.text_area(
-        "Antwoord:",
-        key=f"ans_{st.session_state.vragen_teller}",
-        height=180,
-    )
-
     if not st.session_state.beoordeeld:
-        if st.button("Check"):
+        with st.form(key=f"form_{st.session_state.vragen_teller}"):
+            ans = st.text_area(
+                "Antwoord:",
+                height=180,
+            )
+            check_submitted = st.form_submit_button("Check")
+
+        if check_submitted:
             if not ans or not ans.strip():
                 st.warning("Vul eerst een antwoord in.")
             else:
