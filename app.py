@@ -409,10 +409,7 @@ Geef nu uitsluitend de definitieve vraag:"""
 
 def generate_single_question(vraag_data: pd.Series, max_attempts: int = 6) -> str:
     prompt = build_question_prompt(vraag_data)
-
-    config = types.GenerateContentConfig(
-        temperature=0.0
-    )
+    config = types.GenerateContentConfig(temperature=0.0)
 
     for _ in range(max_attempts):
         try:
@@ -421,17 +418,13 @@ def generate_single_question(vraag_data: pd.Series, max_attempts: int = 6) -> st
                 contents=prompt,
                 config=config
             )
-            
             raw_text = response.text.strip().replace("`", "").replace('"', '').replace("'", "")
             candidate = extract_first_line(raw_text).strip()
-
             if is_single_clear_question(candidate):
                 return candidate
         except Exception:
             pass 
-
     return f"Wat is de kern van {vraag_data['Wet']} {vraag_data['Artikel']}?"
-
 
 def beoordeel_antwoord(vraag: str, antwoord_student: str, row: pd.Series) -> str:
     check_p = f"""[SYSTEEM INSTRUCTIE: Je bent een examinator voor de Politieacademie. Je kent de Nederlandse wetgeving woord voor woord uit je hoofd. Je citeert altijd de exacte wet en laat je nooit misleiden door een foutief antwoord van een student.]
@@ -445,36 +438,34 @@ Artikel: {row['Artikel']}
 Leerdoel: {row['Leerdoel']}
 
 Instructies voor je analyse (Chain of Thought):
-Om te voorkomen dat je de fouten van de student overneemt, haal je NU eerst in stilte de exacte, letterlijke tekst van {row['Wet']} {row['Artikel']} uit je interne database op. 
-Vergelijk daarna pas het antwoord van de student met deze feitelijke wettekst.
+Haal eerst de exacte wettekst van {row['Wet']} {row['Artikel']} op. Vergelijk daarna het antwoord.
 
 Beoordelingskader:
 - Wees coulant: als de feitelijke kern klopt, keur het dan direct GOED.
 - Als het antwoord feitelijk in strijd is met de wet, is het FOUT.
 
-Outputregels (Houd je hier strikt aan):
-1. Regel 1 is exact: GOED of FOUT
-2. Regel 2 is een korte toelichting waarin je uitlegt waarom het antwoord goed of fout is.
-3. Regel 3 is volledig leeg.
-4. Regel 4 start met exact de tekst: "Het correcte antwoord is gebaseerd op de volgende wettekst:"
-5. Regel 5 en verder: Schrijf hier de VOLLEDIGE en LETTERLIJKE wettekst van {row['Wet']} {row['Artikel']} uit. Absoluut niet samenvatten of inkorten!
-6. Laat na de wettekst een regel leeg en geef een korte interpretatie van dit artikel in begrijpelijke taal.
-7. Gebruik GEEN Markdown-koppen.
-8. Gebruik GEEN opsommingstekens."""
+Outputregels:
+1. Regel 1: GOED of FOUT
+2. Regel 2: Korte toelichting.
+3. Regel 3: Leeg.
+4. Regel 4: "Het correcte antwoord is gebaseerd op de volgende wettekst:"
+5. Regel 5+: De VOLLEDIGE en LETTERLIJKE wettekst.
+6. Laat een regel leeg en geef een korte interpretatie.
+Geen Markdown-koppen of opsommingstekens."""
 
-    config = types.GenerateContentConfig(
-        temperature=0.0
-    )
+    config = types.GenerateContentConfig(temperature=0.0)
 
     try:
         response = client.models.generate_content(
-            model='gemini-2.5-pro',
+            model='gemini-2.5-flash',
             contents=check_p,
             config=config
         )
         return response.text.strip()
     except Exception as e:
-        return f"FOUT\nEr is een technische fout opgetreden bij het beoordelen: {e}"
+        if "429" in str(e):
+            return "FOUT\nDe API-limiet is bereikt. Wacht even een minuutje voordat je het opnieuw probeert."
+        return f"FOUT\nEr is een technische fout opgetreden: {e}"
 
 
 def genereer_vraag():
