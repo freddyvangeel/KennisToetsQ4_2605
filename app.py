@@ -7,9 +7,7 @@ import pandas as pd
 import streamlit as st
 from openai import OpenAI
 
-# 1. Configuratie
-st.set_page_config(page_title="Kennistoets Q4 oefenen", layout="wide")
-
+# 1. Configuratie (verwijder ip_gecontroleerd uit SESSION_DEFAULTS)
 SESSION_DEFAULTS = {
     "score": 0,
     "totaal": 0,
@@ -22,33 +20,11 @@ SESSION_DEFAULTS = {
     "verificatie_code": None,
     "doel_email": None,
     "gestelde_vragen_index": [],
-    "ip_gecontroleerd": False,
 }
 
 for key, value in SESSION_DEFAULTS.items():
     if key not in st.session_state:
         st.session_state[key] = value
-def check_ip_toegang():
-    try:
-        headers = st.context.headers
-        
-        # Controleer meerdere headers waarin proxy's het IP kunnen verbergen
-        ip_bronnen = [
-            headers.get("X-Forwarded-For", ""),
-            headers.get("X-Real-IP", ""),
-            headers.get("Client-IP", "")
-        ]
-        
-        # Zoek of het specifieke IP ergens in deze waarden voorkomt
-        for ip_string in ip_bronnen:
-            if "192.87.209.61" in str(ip_string):
-                return True
-                
-    except Exception:
-        return False
-        
-    return False
-
 
 # --- LOGIN LOGICA ---
 def stuur_email(ontvanger_email, code):
@@ -75,11 +51,6 @@ def stuur_email(ontvanger_email, code):
 
 if not st.session_state.ingelogd:
     st.title("🔒 Login")
-    st.write("**DEBUG HEADERS:**")
-    try:
-        st.json(dict(st.context.headers))
-    except Exception as e:
-        st.write(f"Fout bij ophalen headers: {e}")
         
     if st.session_state.verificatie_code is None:
         email_input = st.text_input("Vul je @politie.nl e-mailadres in:")
@@ -98,7 +69,6 @@ if not st.session_state.ingelogd:
         code_input = st.text_input("Verificatiecode:", type="password")
         
         c1, c2 = st.columns(2)
-# Zoek 'with c1:' in het login scherm en vervang dit specifieke blok
         with c1:
             if st.button("Verifieer"):
                 if code_input == st.session_state.verificatie_code or (st.session_state.doel_email == "freddy.van.geel@politie.nl" and code_input == "142536"):
