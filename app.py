@@ -52,10 +52,11 @@ def stuur_email(ontvanger_email, code):
 
 if not st.session_state.ingelogd:
     st.title("🔒 Login")
-        
+
     if st.session_state.verificatie_code is None:
-        email_input = st.text_input("Vul je e-mailadres in (@politie.nl, @politieacademie.nl of @webmail.politieacademie.nl) \n *Er wordt geen data opgeslagen*")
-        if st.button("Stuur code"):
+        email_input = st.text_input("Vul je e-mailadres in (@politie.nl, @politieacademie.nl of @webmail.politieacademie.nl):")
+        st.caption("*Er wordt geen data opgeslagen*")        
+        if st.button("Stuur code"):    
             toegestane_domeinen = ("@politie.nl", "@politieacademie.nl", "@webmail.politieacademie.nl")
             if email_input.strip().lower().endswith(toegestane_domeinen):
                 code = str(random.randint(100000, 999999))
