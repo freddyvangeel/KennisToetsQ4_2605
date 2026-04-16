@@ -368,7 +368,7 @@ with st.sidebar:
 if not api_key:
     st.stop()
 
-client = genai.Client(api_key=api_key)
+client = genai.Client(api_key=api_key, http_options={'api_version': 'v1'})
 
 # 5. Gemini functies
 def build_question_prompt(vraag_data: pd.Series) -> str:
