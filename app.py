@@ -481,6 +481,27 @@ Outputregels (Houd je hier strikt aan):
     except Exception as e:
         return f"FOUT\nEr is een technische fout opgetreden bij het beoordelen: {e}"
 
+
+def genereer_vraag():
+    if "Allemaal" in gekozen_wetten or not gekozen_wetten:
+        filtered_df = df.copy()
+    else:
+        filtered_df = df[df["Wet"].isin(gekozen_wetten)].copy()
+
+    # Sluit rijen uit die al in het geheugen staan
+    filtered_df = filtered_df.drop(st.session_state.gestelde_vragen_index, errors='ignore')
+
+    if filtered_df.empty:
+        st.warning("Alle beschikbare vragen voor deze selectie zijn gesteld.")
+        return
+
+    vraag_data = filtered_df.sample(n=1).iloc[0]
+    st.session_state.gestelde_vragen_index.append(vraag_data.name) # Sla de gekozen rij op
+    
+    st.session_state.current_row = vraag_data
+    st.session_state.vraag_tekst = generate_single_question(vraag_data)
+    st.session_state.beoordeeld = False
+    st.session_state.feedback = None
 # 6. UI
 st.title("Kennistoets Q4 oefenen")
 
