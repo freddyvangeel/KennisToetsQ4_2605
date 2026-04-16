@@ -75,7 +75,7 @@ def stuur_email(ontvanger_email, code):
 
 if not st.session_state.ingelogd:
     st.title("🔒 Login")
-st.write("**DEBUG HEADERS:**")
+    st.write("**DEBUG HEADERS:**")
     try:
         st.json(dict(st.context.headers))
     except Exception as e:
