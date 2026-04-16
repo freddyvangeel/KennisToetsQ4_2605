@@ -417,7 +417,7 @@ def generate_single_question(vraag_data: pd.Series, max_attempts: int = 6) -> st
     for _ in range(max_attempts):
         try:
             response = client.models.generate_content(
-                model='gemini-1.5-flash',
+                model='gemini-2.5-flash',
                 contents=prompt,
                 config=config
             )
@@ -468,7 +468,7 @@ Outputregels (Houd je hier strikt aan):
 
     try:
         response = client.models.generate_content(
-            model='gemini-1.5-flash',
+            model='gemini-2.5-pro',
             contents=check_p,
             config=config
         )
@@ -552,9 +552,4 @@ else:
             st.session_state.vragen_teller += 1
             genereer_vraag()
             st.rerun()
-if st.button("Toon beschikbare modellen"):
-    try:
-        for m in client.models.list():
-            st.write(m.name)
-    except Exception as e:
-        st.error(f"Kan lijst niet ophalen: {e}")
+
