@@ -343,11 +343,11 @@ df = load_combined_data()
 alle_wetten = sorted(df["Wet"].dropna().unique().tolist())
 
 # 4. API & sidebar
-api_key = st.secrets.get("OPENAI_API_KEY")
+api_key = st.secrets.get("GEMINI_API_KEY")
 
 with st.sidebar:
     if not api_key:
-        api_key = st.text_input("OpenAI API Key", type="password")
+        api_key = st.text_input("Gemini API Key", type="password")
 
     gekozen_wetten = st.multiselect(
         "Filter op wet",
@@ -365,7 +365,7 @@ with st.sidebar:
 if not api_key:
     st.stop()
 
-client = OpenAI(api_key=api_key)
+genai.configure(api_key=api_key)
 
 
 # 5. OpenAI functies
