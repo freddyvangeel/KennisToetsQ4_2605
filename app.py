@@ -35,8 +35,8 @@ def stuur_email(ontvanger_email, code):
         st.error("SMTP inloggegevens ontbreken in de secrets.")
         return False
         
-    msg = MIMEText(f"Je verificatiecode voor de Kennistoets Q4 is: {code}")
-    msg['Subject'] = 'Login code Politie toets trainer'
+    msg = MIMEText(f"Je verificatiecode voor de Kennistoets oefen app Q4 is: {code}")
+    msg['Subject'] = 'Login code Kennistoets oefen app Q4'
     msg['From'] = zender_email
     msg['To'] = ontvanger_email
 
