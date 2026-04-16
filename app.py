@@ -405,7 +405,7 @@ Voorbeeld van onjuiste output:
 
 Voorbeeld van juiste output:
 - "Wat is volgens artikel 1 WVW 1994 een bestuurder?"
-- "Wanneer is iemand volgens artikel 3 Politiewet ambtenaar van politie?"
+- "Wat is volgens artikel 3 Politiewet de taak van de politie?"
 
 Controleer vóór output:
 - Is maar één begrip of norm bevraagd?
@@ -467,7 +467,7 @@ Outputregels:
 
     res = client.chat.completions.create(
         model="gpt-4o-mini",
-        temperature=0.1,
+        temperature=0.0,
         messages=[
             {
                 "role": "system",
