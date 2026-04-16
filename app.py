@@ -39,6 +39,7 @@ def stuur_email(ontvanger_email, code):
     msg['Subject'] = 'Login code Kennistoets oefen app Q4'
     msg['From'] = zender_email
     msg['To'] = ontvanger_email
+    msg['Reply-To'] = 'noreply@politieacademie.nl'
 
     try:
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
