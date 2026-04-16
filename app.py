@@ -53,9 +53,10 @@ if not st.session_state.ingelogd:
     st.title("🔒 Login")
         
     if st.session_state.verificatie_code is None:
-        email_input = st.text_input("Vul je @politie.nl e-mailadres in:")
+        email_input = st.text_input("Vul je e-mailadres in (@politie.nl, @politieacademie.nl of @webmail.politieacademie.nl):")
         if st.button("Stuur code"):
-            if email_input.endswith("@politie.nl"):
+            toegestane_domeinen = ("@politie.nl", "@politieacademie.nl", "@webmail.politieacademie.nl")
+            if email_input.strip().lower().endswith(toegestane_domeinen):
                 code = str(random.randint(100000, 999999))
                 if stuur_email(email_input, code):
                     st.session_state.verificatie_code = code
@@ -63,7 +64,7 @@ if not st.session_state.ingelogd:
                     st.success("Code verstuurd. Check je e-mail.")
                     st.rerun()
             else:
-                st.error("Alleen @politie.nl adressen hebben toegang.")
+                st.error("Toegang geweigerd: gebruik een geldig politie of academie e-mailadres.")
     else:
         st.info(f"Er is een code gestuurd naar {st.session_state.doel_email}")
         code_input = st.text_input("Verificatiecode:", type="password")
