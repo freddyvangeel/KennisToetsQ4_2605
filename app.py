@@ -397,49 +397,37 @@ Harde regels:
 7. De vraag moet concreet zijn.
 8. De vraag moet direct aansluiten op het leerdoel.
 9. Geen casus, geen inleiding, geen contextverhaal.
-10. Alleen de vraag als output.
+10. BELANGRIJK: Geef als output UITSLUITEND de letterlijke vraagtekst. Gebruik GEEN markdown, GEEN aanhalingstekens en GEEN inleidende zinnen.
 11. Maximaal 18 woorden.
 12. Eindig met precies één vraagteken.
 
-Voorbeeld van onjuiste output:
-- "Beschrijf de definities van motorrijtuig, weg, bestuurder, begeleider en begeleiden ..."
-
-Voorbeeld van juiste output:
-- "Wat is volgens artikel 1 WVW 1994 een bestuurder?"
-- "Wat is volgens artikel 3 Politiewet de taak van de politie?"
-
-Controleer vóór output:
-- Is maar één begrip of norm bevraagd?
-- Staat er geen opsomming in?
-- Is de vraag kort en concreet?
-- Is de vraag niet dubbelzinnig?
-
-Geef daarna alleen de definitieve vraag."""
+Geef nu uitsluitend de definitieve vraag:"""
 
 
 def generate_single_question(vraag_data: pd.Series, max_attempts: int = 6) -> str:
     prompt = build_question_prompt(vraag_data)
-    last_candidate = ""
 
     model = genai.GenerativeModel(
         model_name="gemini-1.5-flash",
-        system_instruction="Je schrijft zeer korte, concrete en enkelvoudige juridische examenvragen voor de Politieacademie.",
+        system_instruction="Je bent een API die uitsluitend ruwe tekst output genereert. Je gebruikt nooit markdown, nooit aanhalingstekens en geeft nooit beleefde inleidingen of uitleg.",
         generation_config=genai.GenerationConfig(temperature=0.0)
     )
 
     for _ in range(max_attempts):
         try:
             res = model.generate_content(prompt)
-            candidate = extract_first_line(res.text).strip()
-            last_candidate = candidate
+            
+            # Verwijder markdown blokken, backticks en aanhalingstekens
+            raw_text = res.text.strip().replace("`", "").replace('"', '').replace("'", "")
+            candidate = extract_first_line(raw_text).strip()
 
             if is_single_clear_question(candidate):
                 return candidate
-        except Exception as e:
-            st.error(f"Fout bij genereren vraag: {e}")
-            return "Wat is de kern van dit artikel?"
+        except Exception:
+            pass # Fouten stilzwijgend negeren om de max_attempts af te maken
 
-    return "Wat is de kern van dit artikel?"
+    # Vernieuwde dynamische fallback met wet en artikel als het genereren faalt
+    return f"Wat is de kern van {vraag_data['Wet']} {vraag_data['Artikel']}?"
 
 
 def beoordeel_antwoord(vraag: str, antwoord_student: str, row: pd.Series) -> str:
