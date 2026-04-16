@@ -465,7 +465,7 @@ Outputregels (Houd je hier strikt aan):
 
     try:
         response = client.models.generate_content(
-            model='gemini-1.5-pro',
+            model='gemini-1.5-flash',
             contents=check_p,
             config=config
         )
