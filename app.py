@@ -458,7 +458,7 @@ Outputregels (Houd je hier strikt aan):
 8. Gebruik GEEN opsommingstekens."""
 
     model = genai.GenerativeModel(
-        model_name="gemini-1.5-pro",
+        model_name="gemini-1.5-flash",
         system_instruction="Je bent een examinator voor de Politieacademie. Je kent de Nederlandse wetgeving (zoals de Politiewet, WvSr, Sv, WVW) woord voor woord uit je hoofd. Je citeert altijd de exacte wet en laat je nooit misleiden door een foutief antwoord van een student.",
         generation_config=genai.GenerationConfig(temperature=0.0)
     )
