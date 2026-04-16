@@ -6,7 +6,8 @@ from urllib.parse import quote
 import pandas as pd
 import streamlit as st
 # from openai import OpenAI
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 # 1. Configuratie (verwijder ip_gecontroleerd uit SESSION_DEFAULTS)
 SESSION_DEFAULTS = {
