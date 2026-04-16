@@ -414,7 +414,7 @@ def generate_single_question(vraag_data: pd.Series, max_attempts: int = 6) -> st
     for _ in range(max_attempts):
         try:
             response = client.models.generate_content(
-                model='gemini-2.5-flash',
+                model='gemini-2.0-flash',
                 contents=prompt,
                 config=config
             )
@@ -457,7 +457,7 @@ Geen Markdown-koppen of opsommingstekens."""
 
     try:
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-2.0-flash',
             contents=check_p,
             config=config
         )
