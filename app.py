@@ -22,11 +22,41 @@ SESSION_DEFAULTS = {
     "verificatie_code": None,
     "doel_email": None,
     "gestelde_vragen_index": [],
+    "ip_gecontroleerd": False,
 }
 
 for key, value in SESSION_DEFAULTS.items():
     if key not in st.session_state:
         st.session_state[key] = value
+def check_ip_toegang():
+    try:
+        # st.context is beschikbaar vanaf Streamlit 1.35
+        headers = st.context.headers
+        
+        # In cloud-omgevingen staat het client IP in de X-Forwarded-For header
+        ip_header = headers.get("X-Forwarded-For", "")
+        
+        if ip_header:
+            # Soms bevat dit meerdere IP's (bijv. proxy's), we pakken de eerste
+            client_ip = ip_header.split(",")[0].strip()
+        else:
+            client_ip = ""
+            
+        # Check tegen het IP-adres van de politieacademie
+        if client_ip == "192.87.209.61":
+            return True
+    except Exception as e:
+        # Val stilistisch terug op de reguliere e-mail login bij een fout
+        return False
+        
+    return False
+
+# Voer de check 1x uit bij het opstarten van de sessie
+if not st.session_state.ip_gecontroleerd:
+    if check_ip_toegang():
+        st.session_state.ingelogd = True
+    st.session_state.ip_gecontroleerd = True
+
 
 # --- LOGIN LOGICA ---
 def stuur_email(ontvanger_email, code):
