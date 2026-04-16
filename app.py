@@ -56,8 +56,8 @@ if not st.session_state.ingelogd:
     st.title("🔒 Login")
 
     if st.session_state.verificatie_code is None:
-        #email_input = st.text_input("Vul je e-mailadres in (@politie.nl, @politieacademie.nl of @webmail.politieacademie.nl):")
-        email_input = st.text_input("De applicatie is tijdelijk niet te gebruiken")
+        email_input = st.text_input("Vul je e-mailadres in (@politie.nl, @politieacademie.nl of @webmail.politieacademie.nl):")
+        #email_input = st.text_input("De applicatie is tijdelijk niet te gebruiken")
         st.caption("*Er wordt geen data opgeslagen*")        
         if st.button("Stuur code"):    
             toegestane_domeinen = ("@politie.nl", "@politieacademie.nl", "@webmail.politieacademie.nl")
