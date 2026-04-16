@@ -75,7 +75,12 @@ def stuur_email(ontvanger_email, code):
 
 if not st.session_state.ingelogd:
     st.title("🔒 Login")
-    
+st.write("**DEBUG HEADERS:**")
+    try:
+        st.json(dict(st.context.headers))
+    except Exception as e:
+        st.write(f"Fout bij ophalen headers: {e}")
+        
     if st.session_state.verificatie_code is None:
         email_input = st.text_input("Vul je @politie.nl e-mailadres in:")
         if st.button("Stuur code"):
